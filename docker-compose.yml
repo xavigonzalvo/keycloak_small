@@ -88,6 +88,12 @@ services:
       JWT_AUDIENCE: example-app
       # Keycloak's JWKS endpoint so the app can fetch public keys dynamically
       JWKS_URI: http://keycloak:8080/realms/myrealm/protocol/openid-connect/certs
+      # OIDC browser login flow
+      KEYCLOAK_CLIENT_ID: example-app
+      KEYCLOAK_CLIENT_SECRET: example-app-secret
+      TOKEN_ENDPOINT: http://keycloak:8080/realms/myrealm/protocol/openid-connect/token
+      REDIRECT_URI: http://localhost:5001/callback
+      SECRET_KEY: dev-secret-change-in-production
     depends_on:
       keycloak:
         condition: service_healthy

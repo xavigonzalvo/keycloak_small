@@ -26,11 +26,13 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "https://localhost/app/*",
-        "http://localhost/app/*"
+        "http://localhost/app/*",
+        "http://localhost:5001/*"
       ],
       "webOrigins": [
         "https://localhost",
-        "http://localhost"
+        "http://localhost",
+        "http://localhost:5001"
       ],
       "protocol": "openid-connect",
       "attributes": {
