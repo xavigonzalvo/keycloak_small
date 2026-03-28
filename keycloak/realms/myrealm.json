@@ -1,0 +1,110 @@
+{
+  "realm": "myrealm",
+  "enabled": true,
+  "displayName": "My Realm",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "clients": [
+    {
+      "clientId": "example-app",
+      "name": "Example JWT Application",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "example-app-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://localhost/app/*",
+        "http://localhost/app/*"
+      ],
+      "webOrigins": [
+        "https://localhost",
+        "http://localhost"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "protocolMappers": [
+        {
+          "name": "example-app-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "example-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "testuser",
+      "enabled": true,
+      "email": "testuser@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "testpassword",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["default-roles-myrealm"],
+      "clientRoles": {
+        "example-app": ["user"]
+      }
+    }
+  ],
+
+  "roles": {
+    "realm": [
+      {
+        "name": "app-user",
+        "description": "Standard application user"
+      },
+      {
+        "name": "app-admin",
+        "description": "Application administrator"
+      }
+    ],
+    "client": {
+      "example-app": [
+        {"name": "user",  "description": "Regular user of example-app"},
+        {"name": "admin", "description": "Admin of example-app"}
+      ]
+    }
+  },
+
+  "scopeMappings": [],
+
+  "identityProviders": [],
+
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients"
+}

@@ -1,0 +1,129 @@
+# =============================================================================
+# Topology:
+#   Internet → nginx (mTLS / PIV card wall, port 443)
+#                 ├── /auth/*   → Keycloak (IDP)
+#                 └── /app/*    → example-app (JWT consumer)
+#
+#   Keycloak persists its data in Postgres.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Postgres – backing store for Keycloak
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: kc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       keycloak
+      POSTGRES_USER:     keycloak
+      POSTGRES_PASSWORD: keycloak_secret   # replace in production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Keycloak – Identity Provider
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    restart: unless-stopped
+    command:
+      - start-dev
+      - --import-realm                      # auto-import realm on first boot
+    environment:
+      KC_DB:               postgres
+      KC_DB_URL:           jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME:      keycloak
+      KC_DB_PASSWORD:      keycloak_secret  # keep in sync with postgres service
+      KC_HOSTNAME:         localhost         # change to your FQDN
+      KC_HTTP_ENABLED:     "true"
+      KC_HTTP_PORT:        "8080"
+      KC_HEALTH_ENABLED:   "true"
+      KEYCLOAK_ADMIN:      admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_secret   # replace in production
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"   # dev only — remove in production
+    networks:
+      - internal
+    # Keycloak is NOT published directly; nginx is the only ingress point.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q 'UP' <&3"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+  # ---------------------------------------------------------------------------
+  # Example application – JWT consumer
+  # ---------------------------------------------------------------------------
+  example-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: example_app
+    restart: unless-stopped
+    environment:
+      # The public Keycloak OIDC URL (reachable from a user's browser / nginx)
+      # Note: Keycloak 17+ dropped the /auth prefix
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/myrealm
+      # Algorithm used to sign JWTs (RS256 is Keycloak's default)
+      JWT_ALGORITHM: RS256
+      # Audience claim in the JWT – must match the token's "aud" value
+      JWT_AUDIENCE: example-app
+      # Keycloak's JWKS endpoint so the app can fetch public keys dynamically
+      JWKS_URI: http://keycloak:8080/realms/myrealm/protocol/openid-connect/certs
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "5001:5000"   # dev only — exposed for testing without nginx/TLS (5000 taken by macOS AirPlay)
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # Nginx – mTLS reverse proxy / identity wall
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"     # optional: redirect HTTP → HTTPS
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro   # server cert + CA bundle for mTLS
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      example-app:
+        condition: service_started
+    networks:
+      - internal
+
+# =============================================================================
+# Shared resources
+# =============================================================================
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge

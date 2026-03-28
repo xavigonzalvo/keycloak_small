@@ -1,0 +1,14 @@
+# .gitignore — keep secrets out of source control
+nginx/certs/*.key
+nginx/certs/*.crt
+nginx/certs/*.pem
+nginx/certs/*.p12
+nginx/certs/*.srl
+
+# Postgres data volume (local dev only)
+postgres_data/
+
+# Python
+__pycache__/
+*.pyc
+.env
