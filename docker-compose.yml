@@ -59,8 +59,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"   # dev only — remove in production
     networks:
       - internal
     # Keycloak is NOT published directly; nginx is the only ingress point.
@@ -93,8 +91,6 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-    ports:
-      - "5002:3000"   # dev only — exposed for testing without nginx/TLS
     networks:
       - internal
 
