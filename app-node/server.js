@@ -231,7 +231,7 @@ app.get("/callback", async (req, res) => {
     const tokens = await resp.json();
     req.session.accessToken = tokens.access_token;
     req.session.idToken = tokens.id_token || "";
-    res.redirect("/");
+    res.redirect("/node-app/");
   } catch (err) {
     res
       .status(502)

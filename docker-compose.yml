@@ -1,8 +1,8 @@
 # =============================================================================
 # Topology:
 #   Internet → nginx (mTLS / PIV card wall, port 443)
-#                 ├── /auth/*   → Keycloak (IDP)
-#                 └── /app/*    → example-app (JWT consumer)
+#                 ├── /auth/*      → Keycloak (IDP)
+#                 └── /node-app/* → node-app (JWT consumer)
 #
 #   Keycloak persists its data in Postgres.
 # =============================================================================
@@ -47,6 +47,8 @@ services:
       KC_DB_USERNAME:      keycloak
       KC_DB_PASSWORD:      keycloak_secret  # keep in sync with postgres service
       KC_HOSTNAME:         localhost         # change to your FQDN
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS:    xforwarded
       KC_HTTP_ENABLED:     "true"
       KC_HTTP_PORT:        "8080"
       KC_HEALTH_ENABLED:   "true"
@@ -63,47 +65,14 @@ services:
       - internal
     # Keycloak is NOT published directly; nginx is the only ingress point.
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q 'UP' <&3"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /auth/health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q 'UP' <&3"]
       interval: 15s
       timeout: 10s
       retries: 15
       start_period: 90s
 
   # ---------------------------------------------------------------------------
-  # Example application – JWT consumer
-  # ---------------------------------------------------------------------------
-  example-app:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    container_name: example_app
-    restart: unless-stopped
-    environment:
-      # The public Keycloak OIDC URL (reachable from a user's browser / nginx)
-      # Note: Keycloak 17+ dropped the /auth prefix
-      KEYCLOAK_ISSUER: http://localhost:8080/realms/myrealm
-      # Algorithm used to sign JWTs (RS256 is Keycloak's default)
-      JWT_ALGORITHM: RS256
-      # Audience claim in the JWT – must match the token's "aud" value
-      JWT_AUDIENCE: example-app
-      # Keycloak's JWKS endpoint so the app can fetch public keys dynamically
-      JWKS_URI: http://keycloak:8080/realms/myrealm/protocol/openid-connect/certs
-      # OIDC browser login flow
-      KEYCLOAK_CLIENT_ID: example-app
-      KEYCLOAK_CLIENT_SECRET: example-app-secret
-      TOKEN_ENDPOINT: http://keycloak:8080/realms/myrealm/protocol/openid-connect/token
-      REDIRECT_URI: http://localhost:5001/callback
-      SECRET_KEY: dev-secret-change-in-production
-    depends_on:
-      keycloak:
-        condition: service_healthy
-    ports:
-      - "5001:5000"   # dev only — exposed for testing without nginx/TLS (5000 taken by macOS AirPlay)
-    networks:
-      - internal
-
-  # ---------------------------------------------------------------------------
-  # Node.js + React application – JWT consumer (alternative frontend)
+  # Node.js + React application – JWT consumer
   # ---------------------------------------------------------------------------
   node-app:
     build:
@@ -112,14 +81,14 @@ services:
     container_name: node_app
     restart: unless-stopped
     environment:
-      KEYCLOAK_ISSUER: http://localhost:8080/realms/myrealm
+      KEYCLOAK_ISSUER: https://localhost/auth/realms/myrealm
       JWT_ALGORITHM: RS256
       JWT_AUDIENCE: node-app
-      JWKS_URI: http://keycloak:8080/realms/myrealm/protocol/openid-connect/certs
+      JWKS_URI: http://keycloak:8080/auth/realms/myrealm/protocol/openid-connect/certs
       KEYCLOAK_CLIENT_ID: node-app
       KEYCLOAK_CLIENT_SECRET: node-app-secret
-      TOKEN_ENDPOINT: http://keycloak:8080/realms/myrealm/protocol/openid-connect/token
-      REDIRECT_URI: http://localhost:5002/callback
+      TOKEN_ENDPOINT: http://keycloak:8080/auth/realms/myrealm/protocol/openid-connect/token
+      REDIRECT_URI: https://localhost/node-app/callback
       SECRET_KEY: node-dev-secret-change-in-production
     depends_on:
       keycloak:
@@ -146,8 +115,6 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-      example-app:
-        condition: service_started
       node-app:
         condition: service_started
     networks:

@@ -5,14 +5,14 @@ function App() {
   const [auth, setAuth] = useState({ loggedIn: false, username: null, loading: true });
 
   useEffect(() => {
-    fetch("/api/me")
+    fetch("/node-app/api/me")
       .then((r) => r.json())
       .then((data) => setAuth({ ...data, loading: false }))
       .catch(() => setAuth({ loggedIn: false, loading: false }));
   }, []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/node-app">
       <div className="app">
         <nav>
           <div className="nav-links">
@@ -24,10 +24,10 @@ function App() {
             {auth.loading ? null : auth.loggedIn ? (
               <>
                 <span className="username">{auth.username}</span>
-                <a href="/logout" className="btn btn-logout">Log out</a>
+                <a href="/node-app/logout" className="btn btn-logout">Log out</a>
               </>
             ) : (
-              <a href="/login" className="btn btn-login">Log in</a>
+              <a href="/node-app/login" className="btn btn-login">Log in</a>
             )}
           </div>
         </nav>
@@ -51,7 +51,7 @@ function Home({ loggedIn }) {
       {loggedIn ? (
         <p>You are logged in. <Link to="/whoami">View your claims</Link>.</p>
       ) : (
-        <p><a href="/login">Log in with Keycloak</a> to get started.</p>
+        <p><a href="/node-app/login">Log in with Keycloak</a> to get started.</p>
       )}
       <h3>Endpoints</h3>
       <ul>
@@ -69,10 +69,10 @@ function WhoAmI() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/whoami")
+    fetch("/node-app/api/whoami")
       .then((r) => {
         if (r.status === 401) {
-          window.location.href = "/login";
+          window.location.href = "/node-app/login";
           return null;
         }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -99,7 +99,7 @@ function PublicPage() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    fetch("/api/public")
+    fetch("/node-app/api/public")
       .then((r) => r.json())
       .then(setData);
   }, []);
