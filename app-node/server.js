@@ -21,6 +21,7 @@ const session = require("express-session");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
+const { X509Certificate } = require("crypto");
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -155,8 +156,37 @@ app.get("/api/public", (_req, res) => {
   res.json({ message: "This is a public endpoint. No token required." });
 });
 
+app.get("/api/client-cert", (req, res) => {
+  const verify = req.headers["x-ssl-client-verify"];
+  if (!verify) {
+    return res.json({
+      available: false,
+      note: "No mTLS headers present. The request did not arrive via nginx mTLS proxy.",
+    });
+  }
+  res.json({
+    available: true,
+    verify,
+    subject_dn: req.headers["x-ssl-client-dn"] || null,
+    issuer_dn: req.headers["x-ssl-client-issuer-dn"] || null,
+    fingerprint: req.headers["x-ssl-client-fingerprint"] || null,
+    serial: req.headers["x-ssl-client-serial"] || null,
+    not_before: req.headers["x-ssl-client-notbefore"] || null,
+    not_after: req.headers["x-ssl-client-notafter"] || null,
+  });
+});
+
 app.get("/api/whoami", requireAuth(), async (req, res) => {
-  res.json({ message: "Token is valid", claims: req.claims });
+  // Decode the token header (kid, alg) for informational display
+  const rawToken =
+    req.session.accessToken ||
+    (req.headers.authorization || "").replace("Bearer ", "");
+  const decoded = jwt.decode(rawToken, { complete: true });
+  res.json({
+    message: "Token is valid",
+    header: decoded?.header || null,
+    claims: req.claims,
+  });
 });
 
 app.post(
@@ -171,6 +201,39 @@ app.post(
     });
   }
 );
+
+app.get("/api/certs", async (_req, res) => {
+  try {
+    const jwksResp = await fetch(JWKS_URI);
+    if (!jwksResp.ok)
+      throw new Error(`JWKS fetch failed: ${jwksResp.status}`);
+    const jwks = await jwksResp.json();
+
+    const keys = (jwks.keys || []).map((key) => {
+      const info = { kid: key.kid, kty: key.kty, alg: key.alg, use: key.use };
+      if (key.x5c && key.x5c.length > 0) {
+        try {
+          const cert = new X509Certificate(Buffer.from(key.x5c[0], "base64"));
+          info.certificate = {
+            subject: cert.subject,
+            issuer: cert.issuer,
+            valid_from: cert.validFrom,
+            valid_to: cert.validTo,
+            fingerprint_sha256: cert.fingerprint256,
+            serial_number: cert.serialNumber,
+          };
+        } catch (e) {
+          info.certificate_parse_error = e.message;
+        }
+      }
+      return info;
+    });
+
+    res.json({ jwks_uri: JWKS_URI, keys });
+  } catch (err) {
+    res.status(502).json({ error: `Failed to fetch JWKS: ${err.message}` });
+  }
+});
 
 app.get("/api/me", async (req, res) => {
   if (req.session.accessToken) {

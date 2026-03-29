@@ -19,6 +19,7 @@ function App() {
             <Link to="/">Home</Link>
             <Link to="/whoami">Who Am I</Link>
             <Link to="/public-info">Public</Link>
+            <Link to="/certs">Certs</Link>
           </div>
           <div className="nav-auth">
             {auth.loading ? null : auth.loggedIn ? (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/" element={<Home loggedIn={auth.loggedIn} />} />
             <Route path="/whoami" element={<WhoAmI />} />
             <Route path="/public-info" element={<PublicPage />} />
+            <Route path="/certs" element={<CertsPage />} />
           </Routes>
         </main>
       </div>
@@ -89,6 +91,14 @@ function WhoAmI() {
     <div>
       <h2>Who Am I</h2>
       <p>Logged in as: <strong>{data.claims?.preferred_username}</strong></p>
+      {data.header && (
+        <>
+          <h3>Token Header</h3>
+          <p className="subtitle">
+            Algorithm: <code>{data.header.alg}</code> &mdash; Key ID (kid): <code>{data.header.kid}</code>
+          </p>
+        </>
+      )}
       <h3>JWT Claims</h3>
       <pre>{JSON.stringify(data.claims, null, 2)}</pre>
     </div>
@@ -110,6 +120,58 @@ function PublicPage() {
     <div>
       <h2>Public Endpoint</h2>
       <pre>{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  );
+}
+
+function CertsPage() {
+  const [clientCert, setClientCert] = useState(null);
+  const [clientCertError, setClientCertError] = useState(null);
+
+  useEffect(() => {
+    fetch("/node-app/api/client-cert")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setClientCert)
+      .catch((e) => setClientCertError(e.message));
+  }, []);
+
+  const tdLabel = { padding: "4px 12px 4px 0", fontWeight: "bold", whiteSpace: "nowrap", verticalAlign: "top" };
+  const card = { marginTop: "1.5rem", padding: "1rem", border: "1px solid #ddd", borderRadius: "6px" };
+
+  return (
+    <div>
+      <h2>Your Client Certificate (mTLS)</h2>
+      <p className="subtitle">
+        This is the certificate your browser/device presented during the TLS
+        handshake — the one from your Keychain / PIV card. nginx verified it
+        and forwarded the identity to this app.
+      </p>
+      {clientCertError && <div className="error">Error: {clientCertError}</div>}
+      {!clientCert && !clientCertError && <div className="loading">Loading...</div>}
+      {clientCert && (
+        clientCert.available ? (
+          <div style={card}>
+            <table style={{ borderCollapse: "collapse", width: "100%" }}>
+              <tbody>
+                <tr><td style={tdLabel}>Verification</td><td><code>{clientCert.verify}</code></td></tr>
+                <tr><td style={tdLabel}>Subject DN</td><td><code>{clientCert.subject_dn}</code></td></tr>
+                <tr><td style={tdLabel}>Issuer DN</td><td><code>{clientCert.issuer_dn}</code></td></tr>
+                <tr><td style={tdLabel}>Serial</td><td><code>{clientCert.serial}</code></td></tr>
+                <tr><td style={tdLabel}>Not before</td><td>{clientCert.not_before}</td></tr>
+                <tr><td style={tdLabel}>Not after</td><td>{clientCert.not_after}</td></tr>
+                <tr><td style={tdLabel}>Fingerprint (SHA-1)</td><td style={{ wordBreak: "break-all" }}><code>{clientCert.fingerprint}</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ ...card, background: "#fffbe6", borderColor: "#ffe58f" }}>
+            <strong>Not available</strong> — {clientCert.note}
+          </div>
+        )
+      )}
     </div>
   );
 }
