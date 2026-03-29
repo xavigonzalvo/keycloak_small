@@ -103,6 +103,33 @@ services:
       - internal
 
   # ---------------------------------------------------------------------------
+  # Node.js + React application – JWT consumer (alternative frontend)
+  # ---------------------------------------------------------------------------
+  node-app:
+    build:
+      context: ./app-node
+      dockerfile: Dockerfile
+    container_name: node_app
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/myrealm
+      JWT_ALGORITHM: RS256
+      JWT_AUDIENCE: node-app
+      JWKS_URI: http://keycloak:8080/realms/myrealm/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: node-app
+      KEYCLOAK_CLIENT_SECRET: node-app-secret
+      TOKEN_ENDPOINT: http://keycloak:8080/realms/myrealm/protocol/openid-connect/token
+      REDIRECT_URI: http://localhost:5002/callback
+      SECRET_KEY: node-dev-secret-change-in-production
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "5002:3000"   # dev only — exposed for testing without nginx/TLS
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
   # Nginx – mTLS reverse proxy / identity wall
   # ---------------------------------------------------------------------------
   nginx:
@@ -120,6 +147,8 @@ services:
       keycloak:
         condition: service_healthy
       example-app:
+        condition: service_started
+      node-app:
         condition: service_started
     networks:
       - internal

@@ -57,6 +57,49 @@
         "email",
         "roles"
       ]
+    },
+    {
+      "clientId": "node-app",
+      "name": "Node.js JWT Application",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "node-app-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://localhost/node-app/*",
+        "http://localhost/node-app/*",
+        "http://localhost:5002/*"
+      ],
+      "webOrigins": [
+        "https://localhost",
+        "http://localhost",
+        "http://localhost:5002"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "protocolMappers": [
+        {
+          "name": "node-app-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "node-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
     }
   ],
 
@@ -76,7 +119,8 @@
       ],
       "realmRoles": ["default-roles-myrealm"],
       "clientRoles": {
-        "example-app": ["user"]
+        "example-app": ["user"],
+        "node-app": ["user"]
       }
     }
   ],
@@ -96,6 +140,10 @@
       "example-app": [
         {"name": "user",  "description": "Regular user of example-app"},
         {"name": "admin", "description": "Admin of example-app"}
+      ],
+      "node-app": [
+        {"name": "user",  "description": "Regular user of node-app"},
+        {"name": "admin", "description": "Admin of node-app"}
       ]
     }
   },

@@ -8,18 +8,20 @@ the wall consume JWT tokens issued by Keycloak.
 
 ```
 Internet → nginx (mTLS, port 443)
-              ├── /auth/*   → Keycloak (IDP)
-              └── /app/*    → example-app (Flask, JWT consumer)
+              ├── /auth/*      → Keycloak (IDP)
+              ├── /app/*       → example-app (Flask, JWT consumer)
+              └── /node-app/*  → node-app (Node.js + React, JWT consumer)
 
 Keycloak → Postgres (persistent storage)
 ```
 
-| Service       | Internal port | Published (dev) | Purpose                     |
-|---------------|---------------|------------------|-----------------------------|
-| postgres      | 5432          | —                | Keycloak database           |
-| keycloak      | 8080          | 8080             | Identity provider           |
-| example-app   | 5000          | 5001             | Flask app (JWT consumer)    |
-| nginx         | 443 / 80      | 443 / 80         | mTLS reverse proxy          |
+| Service       | Internal port | Published (dev) | Purpose                          |
+|---------------|---------------|------------------|----------------------------------|
+| postgres      | 5432          | —                | Keycloak database                |
+| keycloak      | 8080          | 8080             | Identity provider                |
+| example-app   | 5000          | 5001             | Flask app (JWT consumer)         |
+| node-app      | 3000          | 5002             | Node.js + React (JWT consumer)   |
+| nginx         | 443 / 80      | 443 / 80         | mTLS reverse proxy               |
 
 ## Prerequisites
 
@@ -60,8 +62,10 @@ automatically on **first boot** (clean Postgres volume):
 | Item              | Value                  |
 |-------------------|------------------------|
 | Realm             | `myrealm`             |
-| Client ID         | `example-app`          |
+| Client ID (Flask) | `example-app`          |
 | Client secret     | `example-app-secret`   |
+| Client ID (Node)  | `node-app`             |
+| Client secret     | `node-app-secret`      |
 | Test user         | `testuser`             |
 | Test password     | `testpassword`         |
 | Admin user        | `admin`                |
@@ -70,8 +74,8 @@ automatically on **first boot** (clean Postgres volume):
 
 ## Testing (dev mode — bypassing nginx/mTLS)
 
-Port 8080 (Keycloak) and 5001 (app) are published directly for
-development convenience.
+Port 8080 (Keycloak), 5001 (Flask app), and 5002 (Node.js app) are
+published directly for development convenience.
 
 ### Get an access token
 
@@ -124,6 +128,45 @@ curl http://localhost:5001/whoami
 curl -H "Authorization: Bearer invalid" http://localhost:5001/whoami
 ```
 
+## Node.js + React App (dev mode)
+
+The Node.js app runs on port **5002** and serves a React SPA with the
+same JWT-based authentication as the Flask app.
+
+### Browser login
+
+1. Open http://localhost:5002
+2. Click **Log in** — you'll be redirected to Keycloak
+3. Log in with `testuser` / `testpassword`
+4. After login, click **Who Am I** to view your JWT claims
+
+### API testing with curl
+
+```bash
+# Get a token for the node-app client
+NODE_TOKEN=$(curl -s -X POST http://localhost:8080/realms/myrealm/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "client_id=node-app" \
+  -d "client_secret=node-app-secret" \
+  -d "username=testuser" \
+  -d "password=testpassword" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Public (no auth)
+curl http://localhost:5002/api/public
+curl http://localhost:5002/health
+
+# Protected — decoded JWT claims
+curl -H "Authorization: Bearer $NODE_TOKEN" http://localhost:5002/api/whoami
+
+# Protected + role check
+curl -X POST http://localhost:5002/api/data \
+  -H "Authorization: Bearer $NODE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"hello": "world"}'
+```
+
 ## Testing through Nginx (mTLS)
 
 After generating certs (step 1 above):
@@ -159,8 +202,9 @@ curl -sk \
 ### `Invalid audience` error from the app
 
 The realm JSON includes an audience mapper that adds `example-app` to the
-token's `aud` claim. This mapper is applied **only on first boot** when
-Keycloak imports the realm into a clean database.
+token's `aud` claim (and similarly `node-app` for the Node.js client).
+This mapper is applied **only on first boot** when Keycloak imports the
+realm into a clean database.
 
 If you started the stack before the mapper was in the JSON (or modified the
 realm in the Admin UI), Keycloak won't re-import it. Two options:
