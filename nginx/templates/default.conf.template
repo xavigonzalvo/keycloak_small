@@ -1,9 +1,13 @@
 # =============================================================================
-# conf.d/default.conf
+# default.conf.template
 # =============================================================================
 # Virtual host configuration:
 #   • HTTP  → redirect to HTTPS
 #   • HTTPS → mTLS enforcement, then proxy to Keycloak and example-app
+#
+# This is an envsubst template. The nginx Docker entrypoint substitutes
+# ${APP_FQDN} at container startup, then writes the result to
+# /etc/nginx/conf.d/default.conf.
 # =============================================================================
 
 # --------------------------------------------------------------------------
@@ -21,7 +25,7 @@ server {
 # --------------------------------------------------------------------------
 server {
     listen 443 ssl;
-    server_name localhost;   # Replace with your FQDN
+    server_name ${APP_FQDN};
 
     # ------------------------------------------------------------------
     # Server certificate (issued to nginx)
@@ -34,12 +38,20 @@ server {
     # The CA here must be the issuer of your PIV / smart-card certs.
     # ------------------------------------------------------------------
     ssl_client_certificate /etc/nginx/certs/ca.crt;
-    ssl_verify_client      on;          # Change to "optional" during testing
+    ssl_verify_client      optional;    # must be "optional" so nginx can serve /no-cert.html to users without a cert
     ssl_verify_depth       3;           # Adjust if intermediate CAs are used
 
-    # Reject requests where client cert verification failed
-    if ($ssl_client_verify != SUCCESS) {
-        return 403 "Client certificate required";
+    # ------------------------------------------------------------------
+    # Redirect users without a valid certificate to the no-cert page.
+    # Uses a two-if variable to allow /no-cert.html through without looping.
+    # Change $no_cert_url to point anywhere you like.
+    # ------------------------------------------------------------------
+    set $no_cert_url "https://${APP_FQDN}/no-cert.html";
+    set $do_redirect 0;
+    if ($ssl_client_verify != SUCCESS) { set $do_redirect 1; }
+    if ($request_uri = "/no-cert.html") { set $do_redirect 0; }
+    if ($do_redirect = 1) {
+        return 302 $no_cert_url;
     }
 
     # ------------------------------------------------------------------
@@ -84,6 +96,14 @@ server {
         proxy_set_header   X-SSL-Client-NotAfter     $ssl_client_v_end;
         proxy_set_header   X-SSL-Client-Issuer-DN    $ssl_client_i_dn;
         proxy_set_header   X-SSL-Client-Serial       $ssl_client_serial;
+    }
+
+    # ------------------------------------------------------------------
+    # No-certificate landing page (served without client-cert requirement)
+    # Edit nginx/html/no-cert.html to customise the page.
+    # ------------------------------------------------------------------
+    location = /no-cert.html {
+        root /etc/nginx/html;
     }
 
     # ------------------------------------------------------------------

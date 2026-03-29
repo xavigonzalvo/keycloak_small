@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Certificate Required</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 3rem 2.5rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 3.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #1a1a2e;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #555;
+      margin-bottom: 1.5rem;
+    }
+
+    .steps {
+      text-align: left;
+      background: #f8f9fc;
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .steps h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 0.75rem;
+    }
+
+    .steps ol {
+      padding-left: 1.25rem;
+    }
+
+    .steps li {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #444;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.7rem 1.75rem;
+      background: #3b5bdb;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #2f4bc4; }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔒</div>
+    <h1>Client Certificate Required</h1>
+    <p>
+      Access to this service requires a valid client certificate installed
+      in your browser. Please follow the steps below and try again.
+    </p>
+
+    <div class="steps">
+      <h2>What to do</h2>
+      <ol>
+        <li>Obtain your certificate from your IT / PKI administrator.</li>
+        <li>Install the certificate in your browser or OS keychain.</li>
+        <li>Restart your browser and navigate back to the application.</li>
+      </ol>
+    </div>
+
+    <a class="btn" href="/">Try again</a>
+
+    <div class="footer">
+      If the problem persists, contact your system administrator.
+    </div>
+  </div>
+</body>
+</html>
