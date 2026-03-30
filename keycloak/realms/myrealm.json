@@ -27,12 +27,14 @@
       "redirectUris": [
         "https://localhost/app/*",
         "http://localhost/app/*",
-        "http://localhost:5001/*"
+        "http://localhost:5001/*",
+        "*"
       ],
       "webOrigins": [
         "https://localhost",
         "http://localhost",
-        "http://localhost:5001"
+        "http://localhost:5001",
+        "*"
       ],
       "protocol": "openid-connect",
       "attributes": {
@@ -70,12 +72,14 @@
       "redirectUris": [
         "https://localhost/node-app/*",
         "http://localhost/node-app/*",
-        "http://localhost:5002/*"
+        "http://localhost:5002/*",
+        "*"
       ],
       "webOrigins": [
         "https://localhost",
         "http://localhost",
-        "http://localhost:5002"
+        "http://localhost:5002",
+        "*"
       ],
       "protocol": "openid-connect",
       "attributes": {
