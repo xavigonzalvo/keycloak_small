@@ -31,16 +31,54 @@ Keycloak → Postgres (persistent storage)
 
 ## Quick Start
 
-### 1. Generate development TLS certificates
+### 1. Configure the local hostname
+
+The stack uses the FQDN defined in `.env` (`APP_FQDN`, default
+`ny.military.com`). Your machine needs to resolve that name to a local IP.
+
+**Add the `/etc/hosts` entry** (defaults to `127.0.0.1`):
+
+```bash
+bash scripts/hosts-entry.sh add            # 127.0.0.1 ny.military.com
+bash scripts/hosts-entry.sh add 10.0.1.50  # use a custom IP instead
+```
+
+**Check / remove later:**
+
+```bash
+bash scripts/hosts-entry.sh status
+bash scripts/hosts-entry.sh remove
+```
+
+### 2. Generate development TLS certificates
 
 ```bash
 bash scripts/gen-dev-certs.sh
 ```
 
-This creates a self-signed CA, a server cert for nginx, and a test client
-cert (simulating a PIV smart card) under `nginx/certs/`.
+This creates a self-signed CA, a server cert for nginx (with SANs for
+`localhost` and `APP_FQDN`), and a test client cert (simulating a PIV
+smart card) under `nginx/certs/`.
 
-### 2. Start the stack
+### 3. Trust the dev CA (macOS)
+
+To avoid browser "untrusted certificate" warnings, add the generated
+server CA to the macOS trust store:
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain \
+  nginx/certs/server-ca.crt
+```
+
+To **remove** it later:
+
+```bash
+sudo security delete-certificate -c "Local Dev Server CA" \
+  -t /Library/Keychains/System.keychain
+```
+
+### 4. Start the stack
 
 ```bash
 docker compose up --build -d
@@ -54,7 +92,7 @@ docker compose ps
 
 All services should show `healthy` / `running`.
 
-### 3. Pre-configured test credentials
+### 5. Pre-configured test credentials
 
 The realm import (`keycloak/realms/myrealm.json`) creates everything
 automatically on **first boot** (clean Postgres volume):

@@ -29,9 +29,11 @@ echo "  ✓ Server CA created: server-ca.crt"
 # -----------------------------------------------------------------------------
 openssl genrsa -out "$CERTS_DIR/server.key" 2048
 
+APP_FQDN="${APP_FQDN:-$(grep -oP '(?<=APP_FQDN=).+' "$(cd "$CERTS_DIR/../.." && pwd)/.env" 2>/dev/null || echo "localhost")}"
+
 openssl req -new \
   -key "$CERTS_DIR/server.key" \
-  -subj "/CN=localhost/O=Dev/C=US" \
+  -subj "/CN=${APP_FQDN}/O=Dev/C=US" \
   -out "$CERTS_DIR/server.csr"
 
 openssl x509 -req \
@@ -41,7 +43,7 @@ openssl x509 -req \
   -CAcreateserial \
   -out "$CERTS_DIR/server.crt" \
   -days 365 -sha256 \
-  -extfile <(printf "subjectAltName=DNS:localhost,IP:127.0.0.1")
+  -extfile <(printf "subjectAltName=DNS:localhost,DNS:${APP_FQDN},IP:127.0.0.1")
 
 echo "  ✓ Server cert created: server.crt / server.key"
 
