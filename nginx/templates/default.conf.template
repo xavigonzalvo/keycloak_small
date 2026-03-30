@@ -37,7 +37,7 @@ server {
     # Mutual TLS – client certificate validation
     # The CA here must be the issuer of your PIV / smart-card certs.
     # ------------------------------------------------------------------
-    ssl_client_certificate /etc/nginx/certs/ca.crt;
+    ssl_client_certificate /etc/nginx/certs/client-ca.crt;
     ssl_verify_client      optional;    # must be "optional" so nginx can serve /no-cert.html to users without a cert
     ssl_verify_depth       3;           # Adjust if intermediate CAs are used
 
