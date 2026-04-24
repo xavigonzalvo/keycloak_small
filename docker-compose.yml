@@ -41,6 +41,10 @@ services:
     command:
       - start-dev
       - --import-realm                      # auto-import realm on first boot
+      - --spi-x509cert-lookup-provider=nginx
+      - --spi-x509cert-lookup-nginx-ssl-client-cert=ssl-client-cert
+      - --spi-x509cert-lookup-nginx-ssl-cert-chain-prefix=USELESS
+      - --spi-x509cert-lookup-nginx-certificate-chain-length=0
     environment:
       KC_DB:               postgres
       KC_DB_URL:           jdbc:postgresql://postgres:5432/keycloak
@@ -95,6 +99,31 @@ services:
       - internal
 
   # ---------------------------------------------------------------------------
+  # mTLS Passwordless App – JWT via X.509 certificate authentication
+  # ---------------------------------------------------------------------------
+  mtls-app:
+    build:
+      context: ./app-mtls
+      dockerfile: Dockerfile
+    container_name: mtls_app
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ISSUER: https://${APP_FQDN}/auth/realms/myrealm
+      JWT_ALGORITHM: RS256
+      JWT_AUDIENCE: mtls-app
+      JWKS_URI: http://keycloak:8080/auth/realms/myrealm/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: mtls-app
+      KEYCLOAK_CLIENT_SECRET: mtls-app-secret
+      TOKEN_ENDPOINT: http://keycloak:8080/auth/realms/myrealm/protocol/openid-connect/token
+      REDIRECT_URI: https://${APP_FQDN}/mtls-app/callback
+      SECRET_KEY: mtls-dev-secret-change-in-production
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
   # Nginx – mTLS reverse proxy / identity wall
   # ---------------------------------------------------------------------------
   nginx:
@@ -115,6 +144,8 @@ services:
       keycloak:
         condition: service_healthy
       node-app:
+        condition: service_started
+      mtls-app:
         condition: service_started
     networks:
       - internal

@@ -56,5 +56,33 @@ openssl pkcs12 -export \
 
 echo "  ✓ PKCS#12 bundle created: client.p12 (password: changeit)"
 
+# -----------------------------------------------------------------------------
+# 4. PIV user certificate for mTLS passwordless auth (CN=pivuser)
+# -----------------------------------------------------------------------------
+openssl genrsa -out "$CERTS_DIR/pivuser.key" 2048
+
+openssl req -new \
+  -key "$CERTS_DIR/pivuser.key" \
+  -subj "/CN=pivuser/O=Dev/C=US" \
+  -out "$CERTS_DIR/pivuser.csr"
+
+openssl x509 -req \
+  -in "$CERTS_DIR/pivuser.csr" \
+  -CA "$CERTS_DIR/client-ca.crt" \
+  -CAkey "$CERTS_DIR/client-ca.key" \
+  -CAcreateserial \
+  -out "$CERTS_DIR/pivuser.crt" \
+  -days 365 -sha256
+
+openssl pkcs12 -export \
+  -out "$CERTS_DIR/pivuser.p12" \
+  -inkey "$CERTS_DIR/pivuser.key" \
+  -in "$CERTS_DIR/pivuser.crt" \
+  -certfile "$CERTS_DIR/client-ca.crt" \
+  -passout pass:changeit
+
+echo "  ✓ PIV user cert created: pivuser.crt / pivuser.key (CN=pivuser)"
+echo "  ✓ PKCS#12 bundle created: pivuser.p12 (password: changeit)"
+
 # Cleanup
-rm -f "$CERTS_DIR/client.csr" "$CERTS_DIR/client-ca.srl"
+rm -f "$CERTS_DIR/client.csr" "$CERTS_DIR/pivuser.csr" "$CERTS_DIR/client-ca.srl"

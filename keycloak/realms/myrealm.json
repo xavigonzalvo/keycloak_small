@@ -104,6 +104,52 @@
         "email",
         "roles"
       ]
+    },
+    {
+      "clientId": "mtls-app",
+      "name": "mTLS Passwordless JWT Application",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "mtls-app-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://localhost/mtls-app/*",
+        "http://localhost/mtls-app/*",
+        "*"
+      ],
+      "webOrigins": [
+        "https://localhost",
+        "http://localhost",
+        "*"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "authenticationFlowBindingOverrides": {
+        "browser": "e1000001-0000-4000-a000-000000000001"
+      },
+      "protocolMappers": [
+        {
+          "name": "mtls-app-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mtls-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
     }
   ],
 
@@ -124,7 +170,20 @@
       "realmRoles": ["default-roles-myrealm"],
       "clientRoles": {
         "example-app": ["user"],
-        "node-app": ["user"]
+        "node-app": ["user"],
+        "mtls-app": ["user"]
+      }
+    },
+    {
+      "username": "pivuser",
+      "enabled": true,
+      "email": "pivuser@example.com",
+      "firstName": "PIV",
+      "lastName": "User",
+      "credentials": [],
+      "realmRoles": ["default-roles-myrealm"],
+      "clientRoles": {
+        "mtls-app": ["user"]
       }
     }
   ],
@@ -148,6 +207,10 @@
       "node-app": [
         {"name": "user",  "description": "Regular user of node-app"},
         {"name": "admin", "description": "Admin of node-app"}
+      ],
+      "mtls-app": [
+        {"name": "user",  "description": "Regular user of mtls-app"},
+        {"name": "admin", "description": "Admin of mtls-app"}
       ]
     }
   },
@@ -155,6 +218,85 @@
   "scopeMappings": [],
 
   "identityProviders": [],
+
+  "authenticationFlows": [
+    {
+      "id": "e1000001-0000-4000-a000-000000000001",
+      "alias": "x509 browser",
+      "description": "Browser flow with X.509 client certificate authentication (no password required)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-x509-client-username-form",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false,
+          "authenticatorConfig": "x509-browser-config"
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "autheticatorFlow": true,
+          "flowAlias": "x509 browser forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "id": "e1000001-0000-4000-a000-000000000002",
+      "alias": "x509 browser forms",
+      "description": "Username/password form as fallback",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "autheticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+
+  "authenticatorConfig": [
+    {
+      "id": "e1000001-0000-4000-a000-000000000003",
+      "alias": "x509-browser-config",
+      "config": {
+        "x509-cert-auth.canonical-dn-enabled": "false",
+        "x509-cert-auth.serialnumber-hex-enabled": "false",
+        "x509-cert-auth.ocsp-checking-enabled": "",
+        "x509-cert-auth.crl-checking-enabled": "",
+        "x509-cert-auth.keyusage": "",
+        "x509-cert-auth.extendedkeyusage": "",
+        "x509-cert-auth.confirmation-page-disallowed": "",
+        "x509-cert-auth.mapper-selection.user-attribute-name": "usercertificate",
+        "x509-cert-auth.mapping-source-selection": "Subject's Common Name",
+        "x509-cert-auth.regular-expression": "(.*)",
+        "x509-cert-auth.mapper-selection": "Username or Email",
+        "x509-cert-auth.timestamp-validation-enabled": "true",
+        "x509-cert-auth.certificate-policy-mode": "All",
+        "x509-cert-auth.certificate-policy": ""
+      }
+    }
+  ],
 
   "browserFlow": "browser",
   "registrationFlow": "registration",
